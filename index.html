@@ -10,170 +10,167 @@
       color: white;
       text-align: center;
       font-family: monospace;
-      white-space: pre;
-      overflow: hidden;
+      margin: 0;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      justify-content: flex-start;
       align-items: center;
-      height: 100vh;
-      padding-top: 40px;
     }
-    /* Hide the video off-screen but keep it in the DOM */
-    video {
-      position: absolute;
-      top: -9999px;
-      opacity: 0;
+    /* A fixed container that holds the ASCII art */
+    #asciiContainer {
+      width: 320px;
+      height: 240px;
+      border: 2px solid white;
+      margin-top: 10px;
+      overflow: hidden;
+      /* Center the text vertically/horizontally */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    /* Use the original font size and ensure each line's height is equal */
+    pre#asciiOutput {
+      margin: 0;
+      font-size: 16px;
+      line-height: 16px;
     }
     button {
-      margin: 10px;
-      padding: 10px;
       font-size: 16px;
-      position: relative;
-      z-index: 10;
+      padding: 10px;
+      margin: 10px;
     }
-    /* Adjust the ASCII output appearance */
-    pre#asciiOutput {
-      font-family: "Courier New", monospace;
-      font-size: 6px;    /* Try adjusting this size */
-      line-height: 6px;  /* Set line-height equal to font-size */
-      margin: 0;
-      padding: 0;
+    /* Hide the video element off-screen */
+    video {
+      position: absolute;
+      left: -9999px;
     }
   </style>
 </head>
 <body>
   <button id="switchCamera">Switch Camera</button>
-  <pre id="asciiOutput">Loading...</pre>
-  
-  <script>
-    // ASCII density gradient from light to dark.
-    const density = ' .:-=+*#%@';
+  <div id="asciiContainer">
+    <pre id="asciiOutput">Loading...</pre>
+  </div>
 
-    // Create and configure the video element.
-    const video = document.createElement('video');
+  <script>
+    // Characters from light to dark.
+    const density = " .:-=+*#%@";
+
+    // Create the video element.
+    const video = document.createElement("video");
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = true; // Required for autoplay in iOS Safari.
+    video.muted = true; // Necessary on mobile
     document.body.appendChild(video);
 
-    // Create an off-screen canvas for processing the video.
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    // Create an offscreen canvas with fixed dimensions.
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const CANVAS_WIDTH = 320;
+    const CANVAS_HEIGHT = 240;
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
 
-    const asciiOutput = document.getElementById('asciiOutput');
-    const switchButton = document.getElementById('switchCamera');
+    // Fixed ASCII grid dimensions.
+    const cols = 40; // characters per row
+    const rows = 20; // rows
+
+    const asciiOutput = document.getElementById("asciiOutput");
+    const switchButton = document.getElementById("switchCamera");
 
     let useFrontCamera = false;
     let stream;
-    let rotate = false; // Flag to indicate if we need to rotate (for back camera)
-
-    // Throttle frame updates (about 15 FPS).
-    const FRAME_INTERVAL = 1000 / 15;
-    let lastFrameTime = 0;
-
-    // Correction factor for the font's aspect ratio.
-    // Try adjusting this value if the ASCII output is still too tall.
-    const fontAspect = 0.4; // Lower than before to further reduce vertical stretching
 
     async function initCamera() {
+      // Stop any existing stream.
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
       try {
-        // Stop any existing video stream.
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-        // Request a new video stream with the desired facing mode.
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: useFrontCamera ? "user" : "environment" }
         });
         video.srcObject = stream;
-
         video.onloadedmetadata = async () => {
-          console.log("Video dimensions:", video.videoWidth, video.videoHeight);
           await video.play();
-
-          // Set a base size for our canvas.
-          const desiredBase = 320; // This is the target width (or height after rotation)
-
-          // Determine orientation.
-          if (video.videoWidth > video.videoHeight) {
-            // Assume back camera in landscape mode—rotate it.
-            rotate = true;
-            canvas.height = desiredBase;
-            canvas.width = Math.floor(desiredBase * (video.videoWidth / video.videoHeight));
-          } else {
-            // Front camera (portrait mode)
-            rotate = false;
-            canvas.width = desiredBase;
-            canvas.height = Math.floor(desiredBase * (video.videoHeight / video.videoWidth));
-          }
-          console.log("Canvas dimensions:", canvas.width, canvas.height, "Rotate:", rotate);
-
-          lastFrameTime = performance.now();
           requestAnimationFrame(drawFrame);
         };
       } catch (error) {
-        console.error("Error accessing webcam:", error);
+        console.error("Error accessing camera:", error);
         asciiOutput.textContent = "Error: Camera not accessible";
       }
     }
 
-    function drawFrame(timestamp) {
-      if (timestamp - lastFrameTime >= FRAME_INTERVAL) {
-        lastFrameTime = timestamp;
-        if (video.readyState >= 2) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          
-          if (rotate) {
-            // For back camera feeds, rotate the context by 90°.
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(90 * Math.PI / 180);
-            ctx.drawImage(video, -canvas.height / 2, -canvas.width / 2, canvas.height, canvas.width);
-            ctx.restore();
-          } else {
-            // For front camera feeds, draw normally.
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          }
-          
-          // Calculate the ASCII grid dimensions.
-          const cols = 50;
-          const rows = Math.floor((canvas.height / canvas.width) * cols * fontAspect);
-          const cellWidth = Math.floor(canvas.width / cols);
-          const cellHeight = Math.floor(canvas.height / rows);
-
-          // Convert the canvas image to ASCII.
-          let asciiImage = '';
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const pixels = imageData.data;
-
-          for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < cols; x++) {
-              const px = (y * cellHeight * canvas.width + x * cellWidth) * 4;
-              if (px < pixels.length) {
-                const r = pixels[px];
-                const g = pixels[px + 1];
-                const b = pixels[px + 2];
-                const avg = (r + g + b) / 3;
-                const charIndex = Math.floor((avg / 255) * (density.length - 1));
-                asciiImage += density[charIndex];
-              }
-            }
-            asciiImage += '\n';
-          }
-          asciiOutput.textContent = asciiImage;
-        }
+    function drawFrame() {
+      // Ensure the video has valid dimensions.
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      if (!videoWidth || !videoHeight) {
+        requestAnimationFrame(drawFrame);
+        return;
       }
+      
+      // Compute the aspect ratios.
+      const videoAspect = videoWidth / videoHeight;
+      const canvasAspect = CANVAS_WIDTH / CANVAS_HEIGHT;
+      let sx, sy, sWidth, sHeight;
+
+      // Crop the video feed to fill the canvas without stretching.
+      if (videoAspect > canvasAspect) {
+        // Video is wider than canvas: crop left/right.
+        sHeight = videoHeight;
+        sWidth = videoHeight * canvasAspect;
+        sx = (videoWidth - sWidth) / 2;
+        sy = 0;
+      } else {
+        // Video is taller than canvas: crop top/bottom.
+        sWidth = videoWidth;
+        sHeight = videoWidth / canvasAspect;
+        sx = 0;
+        sy = (videoHeight - sHeight) / 2;
+      }
+
+      // Draw the cropped area into the fixed canvas.
+      ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      // Convert the canvas into an ASCII grid.
+      const imageData = ctx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      const pixels = imageData.data;
+      let asciiImage = "";
+      const cellWidth = Math.floor(CANVAS_WIDTH / cols);
+      const cellHeight = Math.floor(CANVAS_HEIGHT / rows);
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          let total = 0, count = 0;
+          // Average the brightness over each cell.
+          for (let cy = 0; cy < cellHeight; cy++) {
+            for (let cx = 0; cx < cellWidth; cx++) {
+              let px = ((y * cellHeight + cy) * CANVAS_WIDTH + (x * cellWidth + cx)) * 4;
+              if (px >= pixels.length) continue;
+              const r = pixels[px], g = pixels[px + 1], b = pixels[px + 2];
+              total += (r + g + b) / 3;
+              count++;
+            }
+          }
+          const brightness = total / count;
+          const charIndex = Math.floor((brightness / 255) * (density.length - 1));
+          asciiImage += density.charAt(charIndex);
+        }
+        asciiImage += "\n";
+      }
+
+      asciiOutput.textContent = asciiImage;
       requestAnimationFrame(drawFrame);
     }
 
-    // Button to toggle between front and back cameras.
-    switchButton.addEventListener('click', () => {
+    // Switch between front and back cameras.
+    switchButton.addEventListener("click", () => {
       useFrontCamera = !useFrontCamera;
       initCamera();
     });
 
-    // Start the camera on page load.
     initCamera();
   </script>
 </body>
