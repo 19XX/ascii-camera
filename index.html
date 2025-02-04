@@ -13,6 +13,7 @@
             white-space: pre;
             overflow: hidden;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
@@ -20,9 +21,17 @@
         video {
             display: none;
         }
+        button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
+    <button id="switchCamera">Switch Camera</button>
+    <pre id="asciiOutput"></pre>
+    
     <script>
         const density = ' .:-=+*#%@'; // Custom ASCII density from light to dark
         const video = document.createElement('video');
@@ -32,14 +41,20 @@
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         document.body.appendChild(canvas);
+        const asciiOutput = document.getElementById('asciiOutput');
+        const switchButton = document.getElementById('switchCamera');
+        
+        let useFrontCamera = false;
 
         async function initCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: useFrontCamera ? "user" : "environment" } 
+                });
                 video.srcObject = stream;
                 video.addEventListener('loadedmetadata', () => {
-                    canvas.width = video.videoHeight;
-                    canvas.height = video.videoWidth;
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
                     drawFrame();
                 });
             } catch (error) {
@@ -71,13 +86,14 @@
                 asciiImage += '\n';
             }
             
-            displayAscii(asciiImage);
+            asciiOutput.textContent = asciiImage;
             requestAnimationFrame(drawFrame);
         }
 
-        function displayAscii(ascii) {
-            document.body.innerHTML = `<pre>${ascii}</pre>`;
-        }
+        switchButton.addEventListener('click', () => {
+            useFrontCamera = !useFrontCamera;
+            initCamera();
+        });
 
         initCamera();
     </script>
