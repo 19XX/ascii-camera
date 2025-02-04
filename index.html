@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dynamic Aspect Ratio Matrix ASCII Art</title>
+  <title>Dynamic Aspect Ratio ASCII Art (Mirrored, Original Color)</title>
   <style>
     body {
       background: black;
-      color: #0f0;
+      color: white;
       font-family: monospace;
       text-align: center;
       margin: 0;
@@ -16,21 +16,20 @@
       flex-direction: column;
       align-items: center;
     }
-    /* Container dimensions set dynamically (no border) */
+    /* The container’s size will be set dynamically based on the video’s aspect ratio. */
     #asciiContainer {
       margin-top: 10px;
       background: black;
       overflow: hidden;
+      /* No border to keep the box lines hidden */
     }
-    /* The ASCII text is styled to evoke a Matrix vibe */
+    /* The <pre> element shows ASCII text in white on black. */
     pre#asciiOutput {
       margin: 0;
       font-size: 8px;
       line-height: 8px;
-      color: #0f0;
-      /* Add a green glow effect */
-      text-shadow: 0 0 5px #0f0;
-      /* Height is set dynamically via JavaScript to match the canvas */
+      color: white;
+      /* Its height is set dynamically via JavaScript */
     }
     button {
       font-size: 16px;
@@ -51,7 +50,7 @@
   </div>
 
   <script>
-    // A string of characters ordered by increasing density.
+    // A string of characters ordered from light to dark.
     const density = " .:-=+*#%@";
 
     // Create and configure the video element.
@@ -67,7 +66,7 @@
 
     // Fixed width for the canvas; height will be computed from the video’s aspect ratio.
     const fixedWidth = 360;
-    let fixedHeight = 480; // Placeholder; recalculated after video metadata loads.
+    let fixedHeight = 480; // placeholder value; will be recalculated
 
     // Get references to the container and the <pre> output.
     const asciiContainer = document.getElementById("asciiContainer");
@@ -89,15 +88,14 @@
         video.srcObject = stream;
         video.onloadedmetadata = async () => {
           await video.play();
-          // Calculate the video’s aspect ratio.
+          // Calculate the video's aspect ratio.
           const videoAspect = video.videoWidth / video.videoHeight;
-          // Set the canvas width to our fixed value.
-          // The canvas height is computed to match the video’s aspect ratio.
+          // Compute the canvas height to match the video’s aspect ratio.
           fixedHeight = fixedWidth / videoAspect;
           canvas.width = fixedWidth;
           canvas.height = fixedHeight;
           
-          // Set the container and <pre> element to have the same dimensions.
+          // Set the container and <pre> element dimensions.
           asciiContainer.style.width = fixedWidth + "px";
           asciiContainer.style.height = fixedHeight + "px";
           asciiOutput.style.height = fixedHeight + "px";
@@ -116,16 +114,20 @@
         return;
       }
       
-      // Draw the video onto the canvas using the full canvas dimensions.
+      // Mirror the video horizontally by translating to the right edge and scaling X by -1.
+      ctx.save();
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      // Draw the video onto the canvas, filling its full dimensions.
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
       
       // Convert the canvas image to ASCII.
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const pixels = imageData.data;
       let asciiImage = "";
       
-      // Define the ASCII grid.
-      // Here we choose 60 columns; rows will be computed to match the canvas aspect ratio.
+      // Define the ASCII grid resolution. Here we use 60 columns.
       const cols = 60;
       const rows = Math.floor(canvas.height / (canvas.width / cols));
       const cellWidth = Math.floor(canvas.width / cols);
@@ -134,6 +136,7 @@
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           let total = 0, count = 0;
+          // Sample the pixels in the current cell.
           for (let cy = 0; cy < cellHeight; cy++) {
             for (let cx = 0; cx < cellWidth; cx++) {
               const px = ((y * cellHeight + cy) * canvas.width + (x * cellWidth + cx)) * 4;
