@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Matrix Style ASCII Art – Mirrored (No Glow, Front Camera Default)</title>
+  <title>Matrix Style ASCII Art – Mirrored Front Camera Only</title>
   <style>
     body {
       background: black;
@@ -21,6 +21,7 @@
       margin-top: 10px;
       background: black;
       overflow: hidden;
+      /* No border */
     }
     /* Matrix-style text (bright green, no glow) */
     pre#asciiOutput {
@@ -72,7 +73,7 @@
     const asciiOutput = document.getElementById("asciiOutput");
     const switchButton = document.getElementById("switchCamera");
     
-    // Set default to front camera by initializing this variable as true.
+    // Default to the front camera.
     let useFrontCamera = true;
     let stream;
     
@@ -114,12 +115,20 @@
         return;
       }
       
-      // Mirror the video by translating and scaling the context horizontally.
-      ctx.save();
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      ctx.restore();
+      // Clear the canvas.
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Mirror the video only if using the front camera.
+      if (useFrontCamera) {
+        ctx.save();
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.restore();
+      } else {
+        // For the back camera, draw normally.
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
       
       // Convert the canvas image to ASCII.
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
