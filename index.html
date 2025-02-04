@@ -19,7 +19,7 @@
       height: 100vh;
       padding-top: 40px;
     }
-    /* Keep the video in the DOM but hide it off-screen */
+    /* Hide the video off-screen but keep it in the DOM */
     video {
       position: absolute;
       top: -9999px;
@@ -32,6 +32,14 @@
       position: relative;
       z-index: 10;
     }
+    /* Adjust the ASCII output appearance */
+    pre#asciiOutput {
+      font-family: "Courier New", monospace;
+      font-size: 6px;    /* Try adjusting this size */
+      line-height: 6px;  /* Set line-height equal to font-size */
+      margin: 0;
+      padding: 0;
+    }
   </style>
 </head>
 <body>
@@ -39,14 +47,14 @@
   <pre id="asciiOutput">Loading...</pre>
   
   <script>
-    // Density gradient from light to dark.
+    // ASCII density gradient from light to dark.
     const density = ' .:-=+*#%@';
 
     // Create and configure the video element.
     const video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = true; // Required for autoplay on iOS Safari.
+    video.muted = true; // Required for autoplay in iOS Safari.
     document.body.appendChild(video);
 
     // Create an off-screen canvas for processing the video.
@@ -64,9 +72,9 @@
     const FRAME_INTERVAL = 1000 / 15;
     let lastFrameTime = 0;
 
-    // This factor corrects for the typical aspect ratio of monospace fonts.
-    // If your characters are roughly twice as tall as they are wide, use 0.5.
-    const fontAspect = 0.5; // Adjust this value if needed
+    // Correction factor for the font's aspect ratio.
+    // Try adjusting this value if the ASCII output is still too tall.
+    const fontAspect = 0.4; // Lower than before to further reduce vertical stretching
 
     async function initCamera() {
       try {
@@ -129,8 +137,7 @@
           }
           
           // Calculate the ASCII grid dimensions.
-          const cols = 50; 
-          // Multiply by fontAspect to correct for the character cell ratio.
+          const cols = 50;
           const rows = Math.floor((canvas.height / canvas.width) * cols * fontAspect);
           const cellWidth = Math.floor(canvas.width / cols);
           const cellHeight = Math.floor(canvas.height / rows);
