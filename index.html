@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Matrix Style ASCII Art – Mirrored (No Glow)</title>
+  <title>Matrix Style ASCII Art – Mirrored (No Glow, Front Camera Default)</title>
   <style>
     body {
       background: black;
@@ -21,7 +21,6 @@
       margin-top: 10px;
       background: black;
       overflow: hidden;
-      /* No border */
     }
     /* Matrix-style text (bright green, no glow) */
     pre#asciiOutput {
@@ -29,7 +28,6 @@
       font-size: 8px;
       line-height: 8px;
       color: #0f0;
-      /* Removed text-shadow for no glow */
       /* Height will be set dynamically via JavaScript */
     }
     button {
@@ -74,7 +72,8 @@
     const asciiOutput = document.getElementById("asciiOutput");
     const switchButton = document.getElementById("switchCamera");
     
-    let useFrontCamera = false;
+    // Set default to front camera by initializing this variable as true.
+    let useFrontCamera = true;
     let stream;
     
     async function initCamera() {
