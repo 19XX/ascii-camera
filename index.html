@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dynamic Aspect Ratio ASCII Art (Mirrored, Original Color)</title>
+  <title>Matrix Style ASCII Art – Wide Output</title>
   <style>
     body {
       background: black;
-      color: white;
+      color: #0f0;
       font-family: monospace;
       text-align: center;
       margin: 0;
@@ -16,20 +16,20 @@
       flex-direction: column;
       align-items: center;
     }
-    /* The container’s size will be set dynamically based on the video’s aspect ratio. */
+    /* The container size will be set dynamically; no border is shown. */
     #asciiContainer {
       margin-top: 10px;
       background: black;
       overflow: hidden;
-      /* No border to keep the box lines hidden */
     }
-    /* The <pre> element shows ASCII text in white on black. */
+    /* Matrix-style text (bright green with a glow) */
     pre#asciiOutput {
       margin: 0;
       font-size: 8px;
       line-height: 8px;
-      color: white;
-      /* Its height is set dynamically via JavaScript */
+      color: #0f0;
+      text-shadow: 0 0 5px #0f0;
+      /* Height will be set dynamically via JavaScript */
     }
     button {
       font-size: 16px;
@@ -48,34 +48,34 @@
   <div id="asciiContainer">
     <pre id="asciiOutput">Loading...</pre>
   </div>
-
+  
   <script>
-    // A string of characters ordered from light to dark.
+    // A density string ordered from light to dark.
     const density = " .:-=+*#%@";
-
+    
     // Create and configure the video element.
     const video = document.createElement("video");
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = true; // Required for mobile autoplay.
+    video.muted = true; // Required for autoplay on mobile devices.
     document.body.appendChild(video);
-
+    
     // Create an offscreen canvas.
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-
-    // Fixed width for the canvas; height will be computed from the video’s aspect ratio.
-    const fixedWidth = 360;
-    let fixedHeight = 480; // placeholder value; will be recalculated
-
+    
+    // Set a fixed width for the canvas (and output) of 720px.
+    const fixedWidth = 720;
+    let fixedHeight = 480; // Placeholder; will be recalculated when video metadata loads.
+    
     // Get references to the container and the <pre> output.
     const asciiContainer = document.getElementById("asciiContainer");
     const asciiOutput = document.getElementById("asciiOutput");
     const switchButton = document.getElementById("switchCamera");
-
+    
     let useFrontCamera = false;
     let stream;
-
+    
     async function initCamera() {
       // Stop any existing stream.
       if (stream) {
@@ -90,12 +90,12 @@
           await video.play();
           // Calculate the video's aspect ratio.
           const videoAspect = video.videoWidth / video.videoHeight;
-          // Compute the canvas height to match the video’s aspect ratio.
+          // Compute the canvas height so the output maintains the video’s aspect ratio.
           fixedHeight = fixedWidth / videoAspect;
           canvas.width = fixedWidth;
           canvas.height = fixedHeight;
           
-          // Set the container and <pre> element dimensions.
+          // Set the container and <pre> element dimensions to match the canvas.
           asciiContainer.style.width = fixedWidth + "px";
           asciiContainer.style.height = fixedHeight + "px";
           asciiOutput.style.height = fixedHeight + "px";
@@ -107,28 +107,24 @@
         asciiOutput.textContent = "Error: Camera not accessible";
       }
     }
-
+    
     function drawFrame() {
       if (!video.videoWidth || !video.videoHeight) {
         requestAnimationFrame(drawFrame);
         return;
       }
       
-      // Mirror the video horizontally by translating to the right edge and scaling X by -1.
-      ctx.save();
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-      // Draw the video onto the canvas, filling its full dimensions.
+      // Draw the video onto the canvas (using full canvas dimensions).
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      ctx.restore();
       
       // Convert the canvas image to ASCII.
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const pixels = imageData.data;
       let asciiImage = "";
       
-      // Define the ASCII grid resolution. Here we use 60 columns.
-      const cols = 60;
+      // Define the ASCII grid resolution.
+      // With a wider canvas, we use 120 columns.
+      const cols = 120;
       const rows = Math.floor(canvas.height / (canvas.width / cols));
       const cellWidth = Math.floor(canvas.width / cols);
       const cellHeight = Math.floor(canvas.height / rows);
@@ -136,7 +132,7 @@
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           let total = 0, count = 0;
-          // Sample the pixels in the current cell.
+          // Sample pixels in the current cell.
           for (let cy = 0; cy < cellHeight; cy++) {
             for (let cx = 0; cx < cellWidth; cx++) {
               const px = ((y * cellHeight + cy) * canvas.width + (x * cellWidth + cx)) * 4;
@@ -159,12 +155,12 @@
       asciiOutput.textContent = asciiImage;
       requestAnimationFrame(drawFrame);
     }
-
+    
     switchButton.addEventListener("click", () => {
       useFrontCamera = !useFrontCamera;
       initCamera();
     });
-
+    
     initCamera();
   </script>
 </body>
