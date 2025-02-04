@@ -1,113 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Camera ASCII Art</title>
-    <style>
-        body {
-            background: black;
-            color: white;
-            text-align: center;
-            font-family: monospace;
-            white-space: pre;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            height: 100vh;
-            padding-top: 40px; /* Increased padding to fix button visibility */
-        }
-        video {
-            display: none;
-        }
-        button {
-            margin: 10px;
-            padding: 10px;
-            font-size: 16px;
-            position: relative;
-            z-index: 10;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Camera ASCII Art</title>
+  <style>
+    body {
+      background: black;
+      color: white;
+      text-align: center;
+      font-family: monospace;
+      white-space: pre;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      height: 100vh;
+      padding-top: 40px; /* Increased padding to fix button visibility */
+    }
+    /* Hide the video while keeping it in the DOM */
+    video {
+      position: absolute;
+      top: -9999px;
+      opacity: 0;
+    }
+    button {
+      margin: 10px;
+      padding: 10px;
+      font-size: 16px;
+      position: relative;
+      z-index: 10;
+    }
+  </style>
 </head>
 <body>
-    <button id="switchCamera">Switch Camera</button>
-    <pre id="asciiOutput">Loading...</pre>
-    
-    <script>
-        const density = ' .:-=+*#%@'; // Custom ASCII density from light to dark
-        const video = document.createElement('video');
-        video.autoplay = true;
-        video.playsInline = true;
-        video.muted = true; // Required for Safari autoplay
-        video.style.display = "none";
-        
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const asciiOutput = document.getElementById('asciiOutput');
-        const switchButton = document.getElementById('switchCamera');
-        
-        let useFrontCamera = false;
-        let stream;
+  <button id="switchCamera">Switch Camera</button>
+  <pre id="asciiOutput">Loading...</pre>
 
-        async function initCamera() {
-            try {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: useFrontCamera ? "user" : "environment" } 
-                });
-                video.srcObject = stream;
-                video.onloadedmetadata = async () => {
-                    await video.play(); // Ensure playback starts on Safari
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    drawFrame(); // Ensure drawing starts immediately
-                };
-            } catch (error) {
-                console.error('Error accessing webcam:', error);
-                asciiOutput.textContent = "Error: Camera not accessible";
-            }
+  <script>
+    // ASCII density gradient from light to dark.
+    const density = ' .:-=+*#%@';
+
+    // Create and configure the video element.
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true; // Required for autoplay in Safari.
+    // Append video element to the DOM (it's hidden via CSS).
+    document.body.appendChild(video);
+
+    // Create an off-screen canvas for processing the video feed.
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const asciiOutput = document.getElementById('asciiOutput');
+    const switchButton = document.getElementById('switchCamera');
+
+    let useFrontCamera = false;
+    let stream;
+
+    async function initCamera() {
+      try {
+        // Stop any existing video stream.
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
         }
-
-        function drawFrame() {
-            if (video.readyState >= 2) { // Ensure video is playing
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const pixels = imageData.data;
-                
-                let asciiImage = '';
-                const cols = 50;
-                const rows = Math.floor((canvas.height / canvas.width) * cols * 2);
-                const cellWidth = Math.floor(canvas.width / cols);
-                const cellHeight = Math.floor(canvas.height / rows);
-                
-                for (let y = 0; y < rows; y++) {
-                    for (let x = 0; x < cols; x++) {
-                        const px = (y * cellHeight * canvas.width + x * cellWidth) * 4;
-                        const r = pixels[px];
-                        const g = pixels[px + 1];
-                        const b = pixels[px + 2];
-                        const avg = (r + g + b) / 3;
-                        const charIndex = Math.floor((avg / 255) * (density.length - 1));
-                        asciiImage += density[charIndex];
-                    }
-                    asciiImage += '\n';
-                }
-                
-                asciiOutput.textContent = asciiImage;
-            }
-            requestAnimationFrame(drawFrame);
-        }
-
-        switchButton.addEventListener('click', () => {
-            useFrontCamera = !useFrontCamera;
-            initCamera();
+        // Request video stream from the appropriate camera.
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: useFrontCamera ? "user" : "environment" }
         });
+        video.srcObject = stream;
+        video.onloadedmetadata = async () => {
+          // Ensure the video starts playing (needed for Safari).
+          await video.play();
 
-        initCamera();
-    </script>
+          // Set canvas resolution to a lower size for better performance.
+          const desiredWidth = 320;  // Adjust as needed.
+          const desiredHeight = 240; // Adjust as needed.
+          canvas.width = desiredWidth;
+          canvas.height = desiredHeight;
+
+          // Start processing frames.
+          drawFrame();
+        };
+      } catch (error) {
+        console.error('Error accessing webcam:', error);
+        asciiOutput.textContent = "Error: Camera not accessible";
+      }
+    }
+
+    function drawFrame() {
+      if (video.readyState >= 2) { // Video has enough data.
+        // Draw the current video frame onto the canvas.
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
+        let asciiImage = '';
+
+        // Set the number of columns for the ASCII art.
+        const cols = 50;
+        // Calculate the number of rows based on the canvas aspect ratio.
+        const rows = Math.floor((canvas.height / canvas.width) * cols * 2);
+        // Determine the cell size in the canvas.
+        const cellWidth = Math.floor(canvas.width / cols);
+        const cellHeight = Math.floor(canvas.height / rows);
+
+        // Loop over each cell to compute the average brightness.
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            const px = (y * cellHeight * canvas.width + x * cellWidth) * 4;
+            if (px < pixels.length) {
+              const r = pixels[px];
+              const g = pixels[px + 1];
+              const b = pixels[px + 2];
+              // Compute the grayscale value.
+              const avg = (r + g + b) / 3;
+              // Map the brightness to a character from the density string.
+              const charIndex = Math.floor((avg / 255) * (density.length - 1));
+              asciiImage += density[charIndex];
+            }
+          }
+          asciiImage += '\n';
+        }
+
+        // Update the ASCII art output.
+        asciiOutput.textContent = asciiImage;
+      }
+      // Process the next frame.
+      requestAnimationFrame(drawFrame);
+    }
+
+    // Button to switch between front and back cameras.
+    switchButton.addEventListener('click', () => {
+      useFrontCamera = !useFrontCamera;
+      initCamera();
+    });
+
+    // Start the camera on page load.
+    initCamera();
+  </script>
 </body>
 </html>
