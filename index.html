@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dynamic Aspect Ratio ASCII Art</title>
+  <title>Dynamic Aspect Ratio Matrix ASCII Art</title>
   <style>
     body {
       background: black;
-      color: white;
+      color: #0f0;
       font-family: monospace;
       text-align: center;
       margin: 0;
@@ -16,19 +16,21 @@
       flex-direction: column;
       align-items: center;
     }
-    /* The container’s size will be set dynamically based on the video’s aspect ratio */
+    /* Container dimensions set dynamically (no border) */
     #asciiContainer {
-      border: 2px solid white;
       margin-top: 10px;
-      background: #000;
+      background: black;
       overflow: hidden;
     }
-    /* We set a fixed font size; the container’s height will be fixed (in px) to match the canvas */
+    /* The ASCII text is styled to evoke a Matrix vibe */
     pre#asciiOutput {
       margin: 0;
       font-size: 8px;
       line-height: 8px;
-      /* Height will be set dynamically via JavaScript to match the canvas height */
+      color: #0f0;
+      /* Add a green glow effect */
+      text-shadow: 0 0 5px #0f0;
+      /* Height is set dynamically via JavaScript to match the canvas */
     }
     button {
       font-size: 16px;
@@ -49,7 +51,7 @@
   </div>
 
   <script>
-    // A string of characters from light to dark.
+    // A string of characters ordered by increasing density.
     const density = " .:-=+*#%@";
 
     // Create and configure the video element.
@@ -65,7 +67,7 @@
 
     // Fixed width for the canvas; height will be computed from the video’s aspect ratio.
     const fixedWidth = 360;
-    let fixedHeight = 480; // placeholder – will be recalculated
+    let fixedHeight = 480; // Placeholder; recalculated after video metadata loads.
 
     // Get references to the container and the <pre> output.
     const asciiContainer = document.getElementById("asciiContainer");
@@ -123,9 +125,8 @@
       let asciiImage = "";
       
       // Define the ASCII grid.
-      // You can adjust the number of columns; here we choose 60 columns.
+      // Here we choose 60 columns; rows will be computed to match the canvas aspect ratio.
       const cols = 60;
-      // Compute rows based on the canvas height and width (preserving the computed aspect ratio).
       const rows = Math.floor(canvas.height / (canvas.width / cols));
       const cellWidth = Math.floor(canvas.width / cols);
       const cellHeight = Math.floor(canvas.height / rows);
