@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Matrix Style ASCII Art – Mirrored & Glowing</title>
+  <title>Matrix Style ASCII Art – Mirrored (No Glow)</title>
   <style>
     body {
       background: black;
@@ -21,15 +21,15 @@
       margin-top: 10px;
       background: black;
       overflow: hidden;
-      /* No border so the box lines are not visible */
+      /* No border */
     }
-    /* Matrix-style glowing text */
+    /* Matrix-style text (bright green, no glow) */
     pre#asciiOutput {
       margin: 0;
       font-size: 8px;
       line-height: 8px;
       color: #0f0;
-      text-shadow: 0 0 8px #0f0, 0 0 16px #0f0;
+      /* Removed text-shadow for no glow */
       /* Height will be set dynamically via JavaScript */
     }
     button {
@@ -51,7 +51,7 @@
   </div>
   
   <script>
-    // Characters ordered from light to dark.
+    // A string of characters ordered from light to dark.
     const density = " .:-=+*#%@";
     
     // Create and configure the video element.
@@ -119,7 +119,6 @@
       ctx.save();
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
-      // Draw the video onto the entire canvas.
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       ctx.restore();
       
