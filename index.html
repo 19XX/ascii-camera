@@ -37,6 +37,7 @@
         const video = document.createElement('video');
         video.autoplay = true;
         video.playsInline = true;
+        video.style.display = "none"; // Hide raw video
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -55,11 +56,7 @@
                     video: { facingMode: useFrontCamera ? "user" : "environment" } 
                 });
                 video.srcObject = stream;
-                video.addEventListener('loadedmetadata', () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    requestAnimationFrame(drawFrame);
-                });
+                requestAnimationFrame(drawFrame);
             } catch (error) {
                 console.error('Error accessing webcam:', error);
             }
