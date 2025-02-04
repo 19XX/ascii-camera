@@ -37,16 +37,16 @@
 <body>
   <button id="switchCamera">Switch Camera</button>
   <pre id="asciiOutput">Loading...</pre>
-
+  
   <script>
-    // ASCII density gradient from light to dark.
+    // Density gradient from light to dark.
     const density = ' .:-=+*#%@';
 
     // Create and configure the video element.
     const video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = true; // Necessary for autoplay in iOS Safari.
+    video.muted = true; // Required for autoplay on iOS Safari.
     document.body.appendChild(video);
 
     // Create an off-screen canvas for processing the video.
@@ -58,11 +58,15 @@
 
     let useFrontCamera = false;
     let stream;
-    let rotate = false;  // This flag will indicate if we need to rotate (for landscape feeds).
+    let rotate = false; // Flag to indicate if we need to rotate (for back camera)
 
-    // Throttle frame updates (~15 FPS).
+    // Throttle frame updates (about 15 FPS).
     const FRAME_INTERVAL = 1000 / 15;
     let lastFrameTime = 0;
+
+    // This factor corrects for the typical aspect ratio of monospace fonts.
+    // If your characters are roughly twice as tall as they are wide, use 0.5.
+    const fontAspect = 0.5; // Adjust this value if needed
 
     async function initCamera() {
       try {
@@ -80,22 +84,18 @@
           console.log("Video dimensions:", video.videoWidth, video.videoHeight);
           await video.play();
 
-          // Define a base desired size (in pixels) for our output.
-          const desiredBase = 320;  // This is the target width (or target height after rotation).
+          // Set a base size for our canvas.
+          const desiredBase = 320; // This is the target width (or height after rotation)
 
-          // Determine orientation based on the video dimensions.
-          // If the video is landscape (width > height), we assume it needs to be rotated.
+          // Determine orientation.
           if (video.videoWidth > video.videoHeight) {
+            // Assume back camera in landscape mode—rotate it.
             rotate = true;
-            // For a landscape feed that we want to show as portrait,
-            // we want the final effective portrait width to be desiredBase.
-            // Because we will rotate, we set the canvas height to desiredBase.
-            // Then the canvas width is scaled so that when rotated, the aspect is correct.
             canvas.height = desiredBase;
             canvas.width = Math.floor(desiredBase * (video.videoWidth / video.videoHeight));
           } else {
+            // Front camera (portrait mode)
             rotate = false;
-            // For portrait feeds, use the natural ratio.
             canvas.width = desiredBase;
             canvas.height = Math.floor(desiredBase * (video.videoHeight / video.videoWidth));
           }
@@ -117,35 +117,29 @@
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           
           if (rotate) {
-            // For a landscape video feed (back camera), rotate the context 90°.
+            // For back camera feeds, rotate the context by 90°.
             ctx.save();
-            // Translate to the center of the canvas.
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            // Rotate 90 degrees clockwise.
             ctx.rotate(90 * Math.PI / 180);
-            // After rotation, the drawn image's dimensions are swapped.
-            // We draw the video so that its "rotated" width becomes canvas.height
-            // and its height becomes canvas.width.
             ctx.drawImage(video, -canvas.height / 2, -canvas.width / 2, canvas.height, canvas.width);
             ctx.restore();
           } else {
-            // For portrait video feeds, draw normally.
+            // For front camera feeds, draw normally.
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           }
-
-          // Convert the drawn image into ASCII.
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const pixels = imageData.data;
-          let asciiImage = '';
-
-          // Set the number of columns for the ASCII art.
-          const cols = 50;
-          // Use the canvas dimensions to determine rows.
-          const rows = Math.floor((canvas.height / canvas.width) * cols);
+          
+          // Calculate the ASCII grid dimensions.
+          const cols = 50; 
+          // Multiply by fontAspect to correct for the character cell ratio.
+          const rows = Math.floor((canvas.height / canvas.width) * cols * fontAspect);
           const cellWidth = Math.floor(canvas.width / cols);
           const cellHeight = Math.floor(canvas.height / rows);
 
-          // Loop over each cell.
+          // Convert the canvas image to ASCII.
+          let asciiImage = '';
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const pixels = imageData.data;
+
           for (let y = 0; y < rows; y++) {
             for (let x = 0; x < cols; x++) {
               const px = (y * cellHeight * canvas.width + x * cellWidth) * 4;
@@ -153,9 +147,7 @@
                 const r = pixels[px];
                 const g = pixels[px + 1];
                 const b = pixels[px + 2];
-                // Compute average brightness.
                 const avg = (r + g + b) / 3;
-                // Map brightness to a character.
                 const charIndex = Math.floor((avg / 255) * (density.length - 1));
                 asciiImage += density[charIndex];
               }
@@ -168,7 +160,7 @@
       requestAnimationFrame(drawFrame);
     }
 
-    // Toggle between front and back cameras.
+    // Button to toggle between front and back cameras.
     switchButton.addEventListener('click', () => {
       useFrontCamera = !useFrontCamera;
       initCamera();
