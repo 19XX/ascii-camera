@@ -33,7 +33,7 @@
 </head>
 <body>
     <button id="switchCamera">Switch Camera</button>
-    <pre id="asciiOutput"></pre>
+    <pre id="asciiOutput">Loading...</pre>
     
     <script>
         const density = ' .:-=+*#%@'; // Custom ASCII density from light to dark
@@ -64,10 +64,11 @@
                     await video.play(); // Ensure playback starts on Safari
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
-                    requestAnimationFrame(drawFrame);
+                    drawFrame(); // Ensure drawing starts immediately
                 };
             } catch (error) {
                 console.error('Error accessing webcam:', error);
+                asciiOutput.textContent = "Error: Camera not accessible";
             }
         }
 
