@@ -2,177 +2,175 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Matrix Style ASCII Art – Mirrored Front Camera Only</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Matrix Camera ASCII</title>
   <style>
     body {
       background: black;
       color: #0f0;
-      font-family: monospace;
-      text-align: center;
+      font-family: 'Courier New', monospace;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-    }
-    /* The container’s size will be set dynamically based on the video’s aspect ratio. */
-    #asciiContainer {
-      margin-top: 10px;
-      background: black;
+      justify-content: center;
       overflow: hidden;
-      /* No border */
     }
-    /* Matrix-style text (bright green, no glow) */
+
+    #controls {
+      position: fixed;
+      top: 10px;
+      display: flex;
+      gap: 10px;
+      z-index: 2;
+    }
+
+    button, input {
+      background: #002200;
+      color: #0f0;
+      border: 1px solid #0f0;
+      padding: 8px 12px;
+      font-family: monospace;
+      cursor: pointer;
+    }
+
+    #asciiContainer {
+      position: relative;
+      background: black;
+      aspect-ratio: var(--aspect-ratio);
+      max-width: 100%;
+    }
+
     pre#asciiOutput {
       margin: 0;
+      padding: 0;
       font-size: 8px;
       line-height: 8px;
+      letter-spacing: -1px;
       color: #0f0;
-      /* Height will be set dynamically via JavaScript */
+      text-shadow: 0 0 2px #0f03;
+      white-space: pre;
+      aspect-ratio: var(--aspect-ratio);
     }
-    button {
-      font-size: 16px;
-      padding: 10px;
-      margin: 10px;
-    }
-    /* Hide the video element off-screen */
-    video {
-      position: absolute;
-      left: -9999px;
+
+    #error {
+      color: #f00;
+      padding: 20px;
+      text-align: center;
+      display: none;
     }
   </style>
 </head>
 <body>
-  <button id="switchCamera">Switch Camera</button>
-  <div id="asciiContainer">
-    <pre id="asciiOutput">Loading...</pre>
+  <div id="controls">
+    <button id="switchCamera">Switch Camera</button>
+    <input type="range" id="resolution" min="40" max="160" value="120" />
   </div>
-  
-  <script>
-    // A string of characters ordered from light to dark.
-    const density = " .:-=+*#%@";
+  <div id="asciiContainer">
+    <pre id="asciiOutput"></pre>
+  </div>
+  <div id="error"></div>
+
+<script>
+const density = " .:-=+*#%@";
+let cols = 120;
+let aspectRatio = 16/9;
+
+const video = document.createElement("video");
+const canvas = document.createElement("canvas");
+const ctx = canvas.getContext('2d');
+const asciiContainer = document.getElementById('asciiContainer');
+const asciiOutput = document.getElementById('asciiOutput');
+const errorElement = document.getElementById('error');
+
+// Initialize with front camera
+let useFrontCamera = true;
+let stream;
+
+// Resolution control
+document.getElementById('resolution').addEventListener('input', (e) => {
+  cols = parseInt(e.target.value);
+});
+
+async function initCamera() {
+  try {
+    if (stream) stream.getTracks().forEach(track => track.stop());
     
-    // Create and configure the video element.
-    const video = document.createElement("video");
-    video.autoplay = true;
-    video.playsInline = true;
-    video.muted = true; // Required for autoplay on mobile devices.
-    document.body.appendChild(video);
-    
-    // Create an offscreen canvas.
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    
-    // Set a fixed width for the canvas; height will be computed from the video’s aspect ratio.
-    const fixedWidth = 720;
-    let fixedHeight = 480; // Placeholder; recalculated on metadata load.
-    
-    // Get references to the container and the <pre> output.
-    const asciiContainer = document.getElementById("asciiContainer");
-    const asciiOutput = document.getElementById("asciiOutput");
-    const switchButton = document.getElementById("switchCamera");
-    
-    // Default to the front camera.
-    let useFrontCamera = true;
-    let stream;
-    
-    async function initCamera() {
-      // Stop any existing stream.
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { 
+        facingMode: useFrontCamera ? "user" : "environment",
+        aspectRatio: { ideal: 16/9 }
       }
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: useFrontCamera ? "user" : "environment" }
-        });
-        video.srcObject = stream;
-        video.onloadedmetadata = async () => {
-          await video.play();
-          // Calculate the video's aspect ratio.
-          const videoAspect = video.videoWidth / video.videoHeight;
-          // Compute the canvas height so the output maintains the video's aspect ratio.
-          fixedHeight = fixedWidth / videoAspect;
-          canvas.width = fixedWidth;
-          canvas.height = fixedHeight;
-          
-          // Set the container and <pre> element dimensions to match the canvas.
-          asciiContainer.style.width = fixedWidth + "px";
-          asciiContainer.style.height = fixedHeight + "px";
-          asciiOutput.style.height = fixedHeight + "px";
-          
-          requestAnimationFrame(drawFrame);
-        };
-      } catch (error) {
-        console.error("Error accessing camera:", error);
-        asciiOutput.textContent = "Error: Camera not accessible";
-      }
-    }
-    
-    function drawFrame() {
-      if (!video.videoWidth || !video.videoHeight) {
-        requestAnimationFrame(drawFrame);
-        return;
-      }
-      
-      // Clear the canvas.
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Mirror the video only if using the front camera.
-      if (useFrontCamera) {
-        ctx.save();
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        ctx.restore();
-      } else {
-        // For the back camera, draw normally.
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      }
-      
-      // Convert the canvas image to ASCII.
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const pixels = imageData.data;
-      let asciiImage = "";
-      
-      // Define the ASCII grid resolution.
-      const cols = 120; // Using 120 columns for wider output.
-      const rows = Math.floor(canvas.height / (canvas.width / cols));
-      const cellWidth = Math.floor(canvas.width / cols);
-      const cellHeight = Math.floor(canvas.height / rows);
-      
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          let total = 0, count = 0;
-          for (let cy = 0; cy < cellHeight; cy++) {
-            for (let cx = 0; cx < cellWidth; cx++) {
-              const px = ((y * cellHeight + cy) * canvas.width + (x * cellWidth + cx)) * 4;
-              if (px < pixels.length) {
-                const r = pixels[px],
-                      g = pixels[px + 1],
-                      b = pixels[px + 2];
-                total += (r + g + b) / 3;
-                count++;
-              }
-            }
-          }
-          const brightness = total / count;
-          const charIndex = Math.floor((brightness / 255) * (density.length - 1));
-          asciiImage += density.charAt(charIndex);
-        }
-        asciiImage += "\n";
-      }
-      
-      asciiOutput.textContent = asciiImage;
-      requestAnimationFrame(drawFrame);
-    }
-    
-    switchButton.addEventListener("click", () => {
-      useFrontCamera = !useFrontCamera;
-      initCamera();
     });
     
-    initCamera();
-  </script>
+    video.srcObject = stream;
+    await new Promise(resolve => video.onloadedmetadata = resolve);
+    
+    // Set aspect ratio properties
+    aspectRatio = video.videoWidth / video.videoHeight;
+    asciiContainer.style.setProperty('--aspect-ratio', aspectRatio);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    video.play();
+    requestAnimationFrame(drawFrame);
+  } catch (err) {
+    errorElement.textContent = `Camera Error: ${err.message || err.name}`;
+    errorElement.style.display = 'block';
+  }
+}
+
+function drawFrame() {
+  if (!stream || video.readyState < 2) {
+    requestAnimationFrame(drawFrame);
+    return;
+  }
+
+  // Mirror handling
+  ctx.save();
+  if (useFrontCamera) {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  // ASCII conversion
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+  const rows = Math.floor(cols / aspectRatio);
+  let ascii = '';
+  
+  const xStep = Math.floor(canvas.width / cols);
+  const yStep = Math.floor(canvas.height / rows);
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const px = (Math.floor(y * yStep) * canvas.width + Math.floor(x * xStep)) * 4;
+      const brightness = (pixels[px] + pixels[px+1] + pixels[px+2]) / 3;
+      ascii += density.charAt(Math.floor((brightness / 255) * (density.length - 1)));
+    }
+    ascii += '\n';
+  }
+
+  asciiOutput.textContent = ascii;
+  requestAnimationFrame(drawFrame);
+}
+
+// Camera switch
+document.getElementById('switchCamera').addEventListener('click', () => {
+  useFrontCamera = !useFrontCamera;
+  initCamera();
+});
+
+// Initial setup
+initCamera();
+
+// Prevent zooming
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+</script>
 </body>
 </html>
