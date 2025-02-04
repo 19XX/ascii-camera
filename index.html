@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mobile ASCII Art (2× Wider, 9:16 Portrait)</title>
+  <title>Mobile ASCII Art (Wider Output)</title>
   <style>
     body {
       background: black;
@@ -16,7 +16,7 @@
       flex-direction: column;
       align-items: center;
     }
-    /* The container now is 360x640 pixels (doubled in both dimensions to preserve a 9:16 ratio) */
+    /* Container with a fixed 9:16 aspect ratio (360x640) */
     #asciiContainer {
       width: 360px;
       height: 640px;
@@ -28,12 +28,11 @@
       justify-content: center;
       overflow: hidden;
     }
-    /* Adjust the font size so the ASCII grid fits nicely.
-       With the increased resolution (more grid cells), a smaller font works better. */
+    /* Using a small font size so that the grid fits nicely */
     pre#asciiOutput {
       margin: 0;
-      /* Try 8px or tweak as needed */
       font-size: 8px;
+      /* You can adjust the line-height too if necessary */
       line-height: 8px;
     }
     button {
@@ -55,7 +54,7 @@
   </div>
 
   <script>
-    // A string of characters ordered by increasing "density".
+    // Density string (from light to dark).
     const density = " .:-=+*#%@";
 
     // Create and configure the video element.
@@ -65,11 +64,11 @@
     video.muted = true; // Required for mobile autoplay.
     document.body.appendChild(video);
 
-    // Create an offscreen canvas with fixed dimensions of 360x640 (9:16 portrait).
+    // Create an offscreen canvas with fixed 9:16 dimensions.
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    const CANVAS_WIDTH = 360;
-    const CANVAS_HEIGHT = 640;
+    const CANVAS_WIDTH = 360;  // fixed width
+    const CANVAS_HEIGHT = 640; // fixed height (9:16 aspect ratio)
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
@@ -107,7 +106,6 @@
       }
       
       // Determine if the raw video feed is rotated.
-      // Many mobile cameras output a landscape feed even when held in portrait.
       let rotate = false;
       if (video.videoWidth > video.videoHeight) {
         rotate = true;
@@ -117,20 +115,19 @@
       let effectiveWidth = rotate ? video.videoHeight : video.videoWidth;
       let effectiveHeight = rotate ? video.videoWidth : video.videoHeight;
       
-      // Our target aspect ratio is that of the canvas: 360/640.
+      // Our target aspect ratio is that of the canvas.
       const targetAspect = CANVAS_WIDTH / CANVAS_HEIGHT;  // 360/640 = 0.5625
       
-      // Calculate a source rectangle (sx, sy, sWidth, sHeight) from the video feed
-      // that preserves its aspect ratio and fills the canvas without stretching.
+      // Compute the source rectangle (from the effective video) that fills the canvas.
       let sx, sy, sWidth, sHeight;
       if ((effectiveWidth / effectiveHeight) > targetAspect) {
-        // The effective video is wider than our target: crop left/right.
+        // Effective video is wider than target: crop left/right.
         sHeight = effectiveHeight;
         sWidth = effectiveHeight * targetAspect;
         sx = (effectiveWidth - sWidth) / 2;
         sy = 0;
       } else {
-        // The effective video is taller than our target: crop top/bottom.
+        // Effective video is taller than target: crop top/bottom.
         sWidth = effectiveWidth;
         sHeight = effectiveWidth / targetAspect;
         sx = 0;
@@ -140,19 +137,17 @@
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       ctx.save();
       if (rotate) {
-        // Rotate the canvas -90° so that a landscape feed is shown in portrait.
+        // Rotate -90° for a landscape feed.
         ctx.translate(0, CANVAS_HEIGHT);
         ctx.rotate(-90 * Math.PI / 180);
-        // For the front camera, mirror the image horizontally.
         if (useFrontCamera) {
+          // Mirror horizontally for front camera.
           ctx.translate(CANVAS_WIDTH, 0);
           ctx.scale(-1, 1);
         }
-        // When rotated, swap the source rectangle coordinates.
-        // (sx and sy come from the effective dimensions.)
+        // Note: when rotated, we swap the source rectangle coordinates.
         ctx.drawImage(video, sy, sx, sHeight, sWidth, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       } else {
-        // No rotation is needed.
         if (useFrontCamera) {
           ctx.translate(CANVAS_WIDTH, 0);
           ctx.scale(-1, 1);
@@ -161,15 +156,17 @@
       }
       ctx.restore();
 
-      // Convert the canvas image into ASCII.
-      // We'll use a fixed grid.
-      // Previously (for 180px width) we used 20 columns.
-      // Now, with 360px width, we'll use 40 columns.
+      // --- ASCII Conversion ---
+      // Define the desired number of columns.
       const cols = 40;
-      // Compute the number of rows such that cell dimensions remain consistent.
-      const rows = Math.floor(CANVAS_HEIGHT / (CANVAS_WIDTH / cols));
+      // Introduce a vertical scaling factor to "squish" the ASCII grid.
+      // A verticalScale < 1 reduces the number of rows relative to columns,
+      // making the output appear wider (less vertically stretched).
+      const verticalScale = 0.8;  // Adjust this value as needed.
+      const rows = Math.floor((CANVAS_HEIGHT / (CANVAS_WIDTH / cols)) * verticalScale);
       const cellWidth = Math.floor(CANVAS_WIDTH / cols);
       const cellHeight = Math.floor(CANVAS_HEIGHT / rows);
+      
       let asciiImage = "";
       const imageData = ctx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       const pixels = imageData.data;
