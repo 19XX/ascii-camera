@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Matrix Style ASCII Art – Wide Output</title>
+  <title>Matrix Style ASCII Art – Mirrored & Glowing</title>
   <style>
     body {
       background: black;
@@ -16,19 +16,20 @@
       flex-direction: column;
       align-items: center;
     }
-    /* The container size will be set dynamically; no border is shown. */
+    /* The container’s size will be set dynamically based on the video’s aspect ratio. */
     #asciiContainer {
       margin-top: 10px;
       background: black;
       overflow: hidden;
+      /* No border so the box lines are not visible */
     }
-    /* Matrix-style text (bright green with a glow) */
+    /* Matrix-style glowing text */
     pre#asciiOutput {
       margin: 0;
       font-size: 8px;
       line-height: 8px;
       color: #0f0;
-      text-shadow: 0 0 5px #0f0;
+      text-shadow: 0 0 8px #0f0, 0 0 16px #0f0;
       /* Height will be set dynamically via JavaScript */
     }
     button {
@@ -50,7 +51,7 @@
   </div>
   
   <script>
-    // A density string ordered from light to dark.
+    // Characters ordered from light to dark.
     const density = " .:-=+*#%@";
     
     // Create and configure the video element.
@@ -64,9 +65,9 @@
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     
-    // Set a fixed width for the canvas (and output) of 720px.
+    // Set a fixed width for the canvas; height will be computed from the video’s aspect ratio.
     const fixedWidth = 720;
-    let fixedHeight = 480; // Placeholder; will be recalculated when video metadata loads.
+    let fixedHeight = 480; // Placeholder; recalculated on metadata load.
     
     // Get references to the container and the <pre> output.
     const asciiContainer = document.getElementById("asciiContainer");
@@ -90,7 +91,7 @@
           await video.play();
           // Calculate the video's aspect ratio.
           const videoAspect = video.videoWidth / video.videoHeight;
-          // Compute the canvas height so the output maintains the video’s aspect ratio.
+          // Compute the canvas height so the output maintains the video's aspect ratio.
           fixedHeight = fixedWidth / videoAspect;
           canvas.width = fixedWidth;
           canvas.height = fixedHeight;
@@ -114,8 +115,13 @@
         return;
       }
       
-      // Draw the video onto the canvas (using full canvas dimensions).
+      // Mirror the video by translating and scaling the context horizontally.
+      ctx.save();
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      // Draw the video onto the entire canvas.
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
       
       // Convert the canvas image to ASCII.
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -123,8 +129,7 @@
       let asciiImage = "";
       
       // Define the ASCII grid resolution.
-      // With a wider canvas, we use 120 columns.
-      const cols = 120;
+      const cols = 120; // Using 120 columns for wider output.
       const rows = Math.floor(canvas.height / (canvas.width / cols));
       const cellWidth = Math.floor(canvas.width / cols);
       const cellHeight = Math.floor(canvas.height / rows);
@@ -132,7 +137,6 @@
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           let total = 0, count = 0;
-          // Sample pixels in the current cell.
           for (let cy = 0; cy < cellHeight; cy++) {
             for (let cx = 0; cx < cellWidth; cx++) {
               const px = ((y * cellHeight + cy) * canvas.width + (x * cellWidth + cx)) * 4;
