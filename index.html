@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Live Camera ASCII Art</title>
+  <title>Mobile ASCII Art (9:16 Fixed)</title>
   <style>
     body {
       background: black;
@@ -16,20 +16,19 @@
       flex-direction: column;
       align-items: center;
     }
-    /* A fixed container that holds the ASCII art */
+    /* Fixed container with a 9:16 aspect ratio (e.g., 180x320 pixels) */
     #asciiContainer {
-      width: 320px;
-      height: 240px;
+      width: 180px;
+      height: 320px;
       border: 2px solid white;
       margin-top: 10px;
       overflow: hidden;
-      /* Center the text vertically/horizontally */
       display: flex;
       align-items: center;
       justify-content: center;
       background: #000;
     }
-    /* Use the original font size and ensure each line's height is equal */
+    /* Use a standard font size so details are visible */
     pre#asciiOutput {
       margin: 0;
       font-size: 16px;
@@ -54,27 +53,27 @@
   </div>
 
   <script>
-    // Characters from light to dark.
+    // Density gradient from light to dark.
     const density = " .:-=+*#%@";
 
-    // Create the video element.
+    // Create and configure the video element.
     const video = document.createElement("video");
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = true; // Necessary on mobile
+    video.muted = true; // Needed for autoplay on mobile devices.
     document.body.appendChild(video);
 
-    // Create an offscreen canvas with fixed dimensions.
+    // Create an offscreen canvas with a fixed 9:16 aspect ratio.
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    const CANVAS_WIDTH = 320;
-    const CANVAS_HEIGHT = 240;
+    const CANVAS_WIDTH = 180;  // Fixed width
+    const CANVAS_HEIGHT = 320; // Fixed height (9:16 aspect ratio)
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
-    // Fixed ASCII grid dimensions.
-    const cols = 40; // characters per row
-    const rows = 20; // rows
+    // Set up a fixed ASCII grid resolution.
+    const cols = 20; // Adjust the number of columns if needed.
+    const rows = Math.floor((CANVAS_HEIGHT / CANVAS_WIDTH) * cols); // For 180x320, roughly 35 rows.
 
     const asciiOutput = document.getElementById("asciiOutput");
     const switchButton = document.getElementById("switchCamera");
@@ -103,38 +102,36 @@
     }
 
     function drawFrame() {
-      // Ensure the video has valid dimensions.
-      const videoWidth = video.videoWidth;
-      const videoHeight = video.videoHeight;
-      if (!videoWidth || !videoHeight) {
+      // Ensure video has valid dimensions.
+      if (!video.videoWidth || !video.videoHeight) {
         requestAnimationFrame(drawFrame);
         return;
       }
       
-      // Compute the aspect ratios.
-      const videoAspect = videoWidth / videoHeight;
+      // Compute the video’s aspect ratio versus our fixed canvas.
+      const videoAspect = video.videoWidth / video.videoHeight;
       const canvasAspect = CANVAS_WIDTH / CANVAS_HEIGHT;
       let sx, sy, sWidth, sHeight;
 
-      // Crop the video feed to fill the canvas without stretching.
+      // Crop the video so that it fills the 9:16 canvas without stretching.
       if (videoAspect > canvasAspect) {
-        // Video is wider than canvas: crop left/right.
-        sHeight = videoHeight;
-        sWidth = videoHeight * canvasAspect;
-        sx = (videoWidth - sWidth) / 2;
+        // Video is wider than our canvas: crop left/right.
+        sHeight = video.videoHeight;
+        sWidth = video.videoHeight * canvasAspect;
+        sx = (video.videoWidth - sWidth) / 2;
         sy = 0;
       } else {
-        // Video is taller than canvas: crop top/bottom.
-        sWidth = videoWidth;
-        sHeight = videoWidth / canvasAspect;
+        // Video is taller than our canvas: crop top/bottom.
+        sWidth = video.videoWidth;
+        sHeight = video.videoWidth / canvasAspect;
         sx = 0;
-        sy = (videoHeight - sHeight) / 2;
+        sy = (video.videoHeight - sHeight) / 2;
       }
 
-      // Draw the cropped area into the fixed canvas.
+      // Draw the cropped video onto the fixed canvas.
       ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // Convert the canvas into an ASCII grid.
+      // Convert the canvas pixels to ASCII.
       const imageData = ctx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       const pixels = imageData.data;
       let asciiImage = "";
@@ -144,14 +141,17 @@
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           let total = 0, count = 0;
-          // Average the brightness over each cell.
+          // Average the brightness within the cell.
           for (let cy = 0; cy < cellHeight; cy++) {
             for (let cx = 0; cx < cellWidth; cx++) {
-              let px = ((y * cellHeight + cy) * CANVAS_WIDTH + (x * cellWidth + cx)) * 4;
-              if (px >= pixels.length) continue;
-              const r = pixels[px], g = pixels[px + 1], b = pixels[px + 2];
-              total += (r + g + b) / 3;
-              count++;
+              const px = ((y * cellHeight + cy) * CANVAS_WIDTH + (x * cellWidth + cx)) * 4;
+              if (px < pixels.length) {
+                const r = pixels[px];
+                const g = pixels[px + 1];
+                const b = pixels[px + 2];
+                total += (r + g + b) / 3;
+                count++;
+              }
             }
           }
           const brightness = total / count;
